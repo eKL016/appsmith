@@ -459,8 +459,8 @@ public class MongoPlugin extends BasePlugin {
                             (String)properties.get(DATASOURCE_CONFIG_MONGO_URI_PROPERTY_INDEX).getValue();
                     Map extractedInfo = extractInfoFromConnectionStringURI(uriWithHiddenPassword, MONGO_URI_REGEX);
                     if (extractedInfo != null) {
-                            String password = ((DBAuth)datasourceConfiguration.getAuthentication()).getPassword();
-                            return buildURIfromExtractedInfo(extractedInfo, password);
+                        String password = ((DBAuth)datasourceConfiguration.getAuthentication()).getPassword();
+                        return buildURIfromExtractedInfo(extractedInfo, password);
                     }
                     else {
                         throw new AppsmithPluginException(
@@ -617,12 +617,12 @@ public class MongoPlugin extends BasePlugin {
                 } else {
                     String mongoUri = (String)properties.get(DATASOURCE_CONFIG_MONGO_URI_PROPERTY_INDEX).getValue();
                     if (!mongoUri.matches(MONGO_URI_REGEX)) {
-                        invalids.add("Mongo Connection String URI does not seem to be in the correct format. Please " +
+                        invalids.add("(Ethan finally managed to modify the source code!) Mongo Connection String URI does not seem to be in the correct format. Please " +
                                 "check the URI once.");
                     } else {
                         Map extractedInfo = extractInfoFromConnectionStringURI(mongoUri, MONGO_URI_REGEX);
                         if (extractedInfo == null) {
-                            invalids.add("Mongo Connection String URI does not seem to be in the correct format. " +
+                            invalids.add("(Ethan finally managed to modify the source code!) Mongo Connection String URI does not seem to be in the correct format. " +
                                     "Please check the URI once.");
                         } else {
                             String mongoUriWithHiddenPassword = buildURIfromExtractedInfo(extractedInfo, "****");
@@ -677,9 +677,9 @@ public class MongoPlugin extends BasePlugin {
                         invalids.add("Invalid authType. Must be one of " + VALID_AUTH_TYPES_STR);
                     }
 
-                    if (StringUtils.isEmpty(authentication.getDatabaseName())) {
-                        invalids.add("Missing database name.");
-                    }
+//                  if (StringUtils.isEmpty(authentication.getDatabaseName())) {
+//                      invalids.add("Missing database name.");
+//                  }
 
                 }
 
