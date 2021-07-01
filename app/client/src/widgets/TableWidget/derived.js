@@ -20,7 +20,9 @@ export default {
   },
   //
   getSelectedRows: (props, moment, _) => {
-    const selectedRowIndices = props.selectedRowIndices || [];
+    const selectedRowIndices = Array.isArray(props.selectedRowIndices)
+      ? props.selectedRowIndices
+      : [props.selectedRowIndices];
     const filteredTableData =
       props.filteredTableData || props.sanitizedTableData || [];
 
@@ -285,7 +287,10 @@ export default {
       isExactly: (a, b) => {
         return a.toString() === b.toString();
       },
-      empty: _.isEmpty,
+      empty: (a) => {
+        if (a === null || a === undefined || a === "") return true;
+        return _.isEmpty(a.toString());
+      },
       notEmpty: (a) => {
         return a !== "" && a !== undefined && a !== null;
       },
@@ -368,7 +373,10 @@ export default {
       },
     };
 
-    const searchKey = props.searchText ? props.searchText.toLowerCase() : "";
+    const searchKey =
+      props.searchText && !props.onSearchTextChanged
+        ? props.searchText.toLowerCase()
+        : "";
 
     const finalTableData = sortedTableData.filter((item) => {
       const searchFound = searchKey

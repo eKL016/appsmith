@@ -2,7 +2,6 @@
  * Handles the Api pane ui state. It looks into the routing based on actions too
  * */
 import get from "lodash/get";
-import isObject from "lodash/isObject";
 import omit from "lodash/omit";
 import cloneDeep from "lodash/cloneDeep";
 import { all, select, put, takeEvery, call, take } from "redux-saga/effects";
@@ -28,10 +27,9 @@ import {
 import history from "utils/history";
 import {
   API_EDITOR_ID_URL,
-  QUERY_EDITOR_URL_WITH_SELECTED_PAGE_ID,
-  DATA_SOURCES_EDITOR_URL,
-  API_EDITOR_URL_WITH_SELECTED_PAGE_ID,
   DATA_SOURCES_EDITOR_ID_URL,
+  INTEGRATION_EDITOR_URL,
+  INTEGRATION_TABS,
 } from "constants/routes";
 import {
   getCurrentApplicationId,
@@ -69,7 +67,11 @@ import { Toaster } from "components/ads/Toast";
 import { createMessage, ERROR_ACTION_RENAME_FAIL } from "constants/messages";
 import { checkCurrentStep } from "./OnboardingSagas";
 import { OnboardingStep } from "constants/OnboardingConstants";
-import { getIndextoUpdate } from "utils/ApiPaneUtils";
+import {
+  getIndextoUpdate,
+  parseUrlForQueryParams,
+  queryParamsRegEx,
+} from "utils/ApiPaneUtils";
 
 function* syncApiParamsSaga(
   actionPayload: ReduxActionWithMeta<string, { field: string }>,
@@ -77,61 +79,25 @@ function* syncApiParamsSaga(
 ) {
   const field = actionPayload.meta.field;
   //Payload here contains the path and query params of a typical url like https://{domain}/{path}?{query_params}
-  let value = actionPayload.payload;
+  const value = actionPayload.payload;
   // Regular expression to find the query params group
-  if (isObject(value)) {
-    value = get(value, "datasourceConfiguration.url", "");
-  }
-  const queryParamsRegEx = /(\/[\s\S]*?)(\?(?![^{]*})[\s\S]*)?$/;
-  value = (value.match(queryParamsRegEx) || [])[2] || "";
-  const padQueryParams = { key: "", value: "" };
   PerformanceTracker.startTracking(PerformanceTransactionName.SYNC_PARAMS_SAGA);
   if (field === "actionConfiguration.path") {
-    if (value.indexOf("?") > -1) {
-      const paramsString = value.substr(value.indexOf("?") + 1);
-      const params = paramsString.split("&").map((p) => {
-        const firstEqualPos = p.indexOf("=");
-        const keyValue =
-          firstEqualPos > -1
-            ? [p.substring(0, firstEqualPos), p.substring(firstEqualPos + 1)]
-            : [];
-        return { key: keyValue[0], value: keyValue[1] || "" };
-      });
-      if (params.length < 2) {
-        while (params.length < 2) {
-          params.push(padQueryParams);
-        }
-      }
-      yield put(
-        autofill(
-          API_EDITOR_FORM_NAME,
-          "actionConfiguration.queryParameters",
-          params,
-        ),
-      );
-      yield put(
-        setActionProperty({
-          actionId: actionId,
-          propertyName: "actionConfiguration.queryParameters",
-          value: params,
-        }),
-      );
-    } else {
-      yield put(
-        autofill(
-          API_EDITOR_FORM_NAME,
-          "actionConfiguration.queryParameters",
-          Array(2).fill(padQueryParams),
-        ),
-      );
-      yield put(
-        setActionProperty({
-          actionId: actionId,
-          propertyName: "actionConfiguration.queryParameters",
-          value: Array(2).fill(padQueryParams),
-        }),
-      );
-    }
+    const params = parseUrlForQueryParams(value);
+    yield put(
+      autofill(
+        API_EDITOR_FORM_NAME,
+        "actionConfiguration.queryParameters",
+        params,
+      ),
+    );
+    yield put(
+      setActionProperty({
+        actionId: actionId,
+        propertyName: "actionConfiguration.queryParameters",
+        value: params,
+      }),
+    );
   } else if (field.includes("actionConfiguration.queryParameters")) {
     const { values } = yield select(getFormData, API_EDITOR_FORM_NAME);
     const path = values.actionConfiguration.path || "";
@@ -429,7 +395,6 @@ function* handleCreateNewApiActionSaga(
     getPluginIdOfPackageName,
     REST_PLUGIN_PACKAGE_NAME,
   );
-  const applicationId = yield select(getCurrentApplicationId);
   const { pageId } = action.payload;
   if (pageId && pluginId) {
     const actions = yield select(getActions);
@@ -454,9 +419,6 @@ function* handleCreateNewApiActionSaga(
         },
         pageId,
       } as ApiAction), // We don't have recursive partial in typescript for now.
-    );
-    history.push(
-      API_EDITOR_URL_WITH_SELECTED_PAGE_ID(applicationId, pageId, pageId),
     );
   }
 }
@@ -514,11 +476,10 @@ function* handleCreateNewQueryActionSaga(
     }
 
     yield put(createActionRequest(createActionPayload));
-    history.push(
-      QUERY_EDITOR_URL_WITH_SELECTED_PAGE_ID(applicationId, pageId, pageId),
-    );
   } else {
-    history.push(DATA_SOURCES_EDITOR_URL(applicationId, pageId));
+    history.push(
+      INTEGRATION_EDITOR_URL(applicationId, pageId, INTEGRATION_TABS.ACTIVE),
+    );
   }
 }
 

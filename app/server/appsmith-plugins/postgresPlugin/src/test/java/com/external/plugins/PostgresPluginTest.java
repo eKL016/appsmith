@@ -125,6 +125,12 @@ public class PostgresPluginTest {
                         "    id timestamptz default now(),\n" +
                         "    name timestamptz default now()\n" +
                         ")");
+
+                statement.execute("CREATE TABLE jsontest (\n" +
+                        "    id serial PRIMARY KEY,\n" +
+                        "    item json,\n" +
+                        "    origin jsonb" +
+                        ")");
             }
 
             try (Statement statement = connection.createStatement()) {
@@ -157,6 +163,14 @@ public class PostgresPluginTest {
                                 " TIMESTAMP '2021-01-31 23:59:59', TIMESTAMP WITH TIME ZONE '2021-01-31 23:59:59 CET'," +
                                 " '0 years'," +
                                 " '{1, 2, 3}', '{\"a\", \"b\"}'" +
+                                ")");
+            }
+
+            try (Statement statement = connection.createStatement()) {
+                statement.execute(
+                        "INSERT INTO jsontest VALUES (" +
+                                "1, '{\"type\":\"racket\", \"manufacturer\":\"butterfly\"}'," +
+                                "'{\"country\":\"japan\", \"city\":\"kyoto\"}'"+
                                 ")");
             }
 
@@ -336,7 +350,7 @@ public class PostgresPluginTest {
         StepVerifier.create(structureMono)
                 .assertNext(structure -> {
                     assertNotNull(structure);
-                    assertEquals(3, structure.getTables().size());
+                    assertEquals(4, structure.getTables().size());
 
                     final DatasourceStructure.Table campusTable = structure.getTables().get(0);
                     assertEquals("public.campus", campusTable.getName());
@@ -350,7 +364,21 @@ public class PostgresPluginTest {
                     );
                     assertEquals(campusTable.getKeys().size(), 0);
 
-                    final DatasourceStructure.Table possessionsTable = structure.getTables().get(1);
+                    final DatasourceStructure.Table jsonTestTable = structure.getTables().get(1);
+                    assertEquals("public.jsontest", jsonTestTable.getName());
+                    assertEquals(DatasourceStructure.TableType.TABLE, campusTable.getType());
+                    assertArrayEquals(
+                            new DatasourceStructure.Column[]{
+                                    new DatasourceStructure.Column("id", "int4", "nextval('jsontest_id_seq" +
+                                            "'::regclass)"),
+                                    new DatasourceStructure.Column("item", "json", null),
+                                    new DatasourceStructure.Column("origin", "jsonb", null)
+                            },
+                            jsonTestTable.getColumns().toArray()
+                    );
+                    assertEquals(jsonTestTable.getKeys().size(), 1);
+
+                    final DatasourceStructure.Table possessionsTable = structure.getTables().get(2);
                     assertEquals("public.possessions", possessionsTable.getName());
                     assertEquals(DatasourceStructure.TableType.TABLE, possessionsTable.getType());
                     assertArrayEquals(
@@ -376,20 +404,20 @@ public class PostgresPluginTest {
 
                     assertArrayEquals(
                             new DatasourceStructure.Template[]{
-                                    new DatasourceStructure.Template("SELECT", "SELECT * FROM public.\"possessions\" LIMIT 10;"),
+                                    new DatasourceStructure.Template("SELECT", "SELECT * FROM public.\"possessions\" LIMIT 10;", null),
                                     new DatasourceStructure.Template("INSERT", "INSERT INTO public.\"possessions\" (\"title\", \"user_id\")\n" +
-                                            "  VALUES ('', 1);"),
+                                            "  VALUES ('', 1);", null),
                                     new DatasourceStructure.Template("UPDATE", "UPDATE public.\"possessions\" SET\n" +
                                             "    \"title\" = ''\n" +
                                             "    \"user_id\" = 1\n" +
-                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may update every row in the table!"),
+                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may update every row in the table!", null),
                                     new DatasourceStructure.Template("DELETE", "DELETE FROM public.\"possessions\"\n" +
-                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may delete everything in the table!"),
+                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may delete everything in the table!", null),
                             },
                             possessionsTable.getTemplates().toArray()
                     );
 
-                    final DatasourceStructure.Table usersTable = structure.getTables().get(2);
+                    final DatasourceStructure.Table usersTable = structure.getTables().get(3);
                     assertEquals("public.users", usersTable.getName());
                     assertEquals(DatasourceStructure.TableType.TABLE, usersTable.getType());
                     assertArrayEquals(
@@ -420,9 +448,9 @@ public class PostgresPluginTest {
 
                     assertArrayEquals(
                             new DatasourceStructure.Template[]{
-                                    new DatasourceStructure.Template("SELECT", "SELECT * FROM public.\"users\" LIMIT 10;"),
+                                    new DatasourceStructure.Template("SELECT", "SELECT * FROM public.\"users\" LIMIT 10;", null),
                                     new DatasourceStructure.Template("INSERT", "INSERT INTO public.\"users\" (\"username\", \"password\", \"email\", \"spouse_dob\", \"dob\", \"time1\", \"time_tz\", \"created_on\", \"created_on_tz\", \"interval1\", \"numbers\", \"texts\")\n" +
-                                            "  VALUES ('', '', '', '2019-07-01', '2019-07-01', '18:32:45', '04:05:06 PST', TIMESTAMP '2019-07-01 10:00:00', TIMESTAMP WITH TIME ZONE '2019-07-01 06:30:00 CET', 1, '{1, 2, 3}', '{\"first\", \"second\"}');"),
+                                            "  VALUES ('', '', '', '2019-07-01', '2019-07-01', '18:32:45', '04:05:06 PST', TIMESTAMP '2019-07-01 10:00:00', TIMESTAMP WITH TIME ZONE '2019-07-01 06:30:00 CET', 1, '{1, 2, 3}', '{\"first\", \"second\"}');", null),
                                     new DatasourceStructure.Template("UPDATE", "UPDATE public.\"users\" SET\n" +
                                             "    \"username\" = ''\n" +
                                             "    \"password\" = ''\n" +
@@ -436,9 +464,9 @@ public class PostgresPluginTest {
                                             "    \"interval1\" = 1\n" +
                                             "    \"numbers\" = '{1, 2, 3}'\n" +
                                             "    \"texts\" = '{\"first\", \"second\"}'\n" +
-                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may update every row in the table!"),
+                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may update every row in the table!", null),
                                     new DatasourceStructure.Template("DELETE", "DELETE FROM public.\"users\"\n" +
-                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may delete everything in the table!"),
+                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may delete everything in the table!", null),
                             },
                             usersTable.getTemplates().toArray()
                     );
@@ -1060,6 +1088,30 @@ public class PostgresPluginTest {
         StepVerifier.create(resultMono)
                 .assertNext(result -> {
                     assertTrue(result.getIsExecutionSuccess());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    public void testJsonTypes() {
+        ActionConfiguration actionConfiguration = new ActionConfiguration();
+        actionConfiguration.setBody("SELECT * FROM jsontest");
+        DatasourceConfiguration dsConfig = createDatasourceConfiguration();
+        Mono<HikariDataSource> connectionPoolMono = pluginExecutor.datasourceCreate(dsConfig);
+        Mono<ActionExecutionResult> resultMono = connectionPoolMono
+                .flatMap(conn -> pluginExecutor.executeParameterized(conn, new ExecuteActionDTO(), dsConfig, actionConfiguration));
+
+        StepVerifier.create(resultMono)
+                .assertNext(result -> {
+                    assertNotNull(result);
+                    assertTrue(result.getIsExecutionSuccess());
+                    assertNotNull(result.getBody());
+
+                    final JsonNode node = ((ArrayNode) result.getBody()).get(0);
+                    assertEquals("racket", node.get("item").get("type").asText());
+                    assertEquals("butterfly", node.get("item").get("manufacturer").asText());
+                    assertEquals("japan", node.get("origin").get("country").asText());
+                    assertEquals("kyoto", node.get("origin").get("city").asText());
                 })
                 .verifyComplete();
     }

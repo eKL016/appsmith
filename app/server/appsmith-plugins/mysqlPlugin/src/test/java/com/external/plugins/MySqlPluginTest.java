@@ -27,12 +27,14 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.MySQLR2DBCDatabaseContainer;
+import org.testcontainers.utility.DockerImageName;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,14 +56,16 @@ public class MySqlPluginTest {
 
     @SuppressWarnings("rawtypes") // The type parameter for the container type is just itself and is pseudo-optional.
     @ClassRule
-    public static MySQLContainer mySQLContainer = new MySQLContainer("mysql:5.7")
+    public static MySQLContainer mySQLContainer = new MySQLContainer(
+            DockerImageName.parse("mysql/mysql-server:8.0.25").asCompatibleSubstituteFor("mysql"))
             .withUsername("mysql")
             .withPassword("password")
             .withDatabaseName("test_db");
 
     @SuppressWarnings("rawtypes") // The type parameter for the container type is just itself and is pseudo-optional.
     @ClassRule
-    public static MySQLContainer mySQLContainerWithInvalidTimezone = (MySQLContainer) new MySQLContainer()
+    public static MySQLContainer mySQLContainerWithInvalidTimezone = (MySQLContainer) new MySQLContainer(
+            DockerImageName.parse("mysql/mysql-server:8.0.25").asCompatibleSubstituteFor("mysql"))
             .withUsername("mysql")
             .withPassword("password")
             .withDatabaseName("test_db")
@@ -296,7 +300,7 @@ public class MySqlPluginTest {
                      */
                     List<RequestParamDTO> expectedRequestParams = new ArrayList<>();
                     expectedRequestParams.add(new RequestParamDTO(ACTION_CONFIGURATION_BODY,
-                            actionConfiguration.getBody(), null, null, null));
+                            actionConfiguration.getBody(), null, null, new HashMap<>()));
                     assertEquals(result.getRequest().getRequestParams().toString(), expectedRequestParams.toString());
                 })
                 .verifyComplete();
@@ -635,18 +639,18 @@ public class MySqlPluginTest {
 
                     assertArrayEquals(
                             new DatasourceStructure.Template[]{
-                                    new DatasourceStructure.Template("SELECT", "SELECT * FROM possessions LIMIT 10;"),
+                                    new DatasourceStructure.Template("SELECT", "SELECT * FROM possessions LIMIT 10;", null),
                                     new DatasourceStructure.Template("INSERT", "INSERT INTO possessions (id, title, user_id, username, email)\n" +
-                                            "  VALUES (1, '', 1, '', '');"),
+                                            "  VALUES (1, '', 1, '', '');", null),
                                     new DatasourceStructure.Template("UPDATE", "UPDATE possessions SET\n" +
                                             "    id = 1\n" +
                                             "    title = ''\n" +
                                             "    user_id = 1\n" +
                                             "    username = ''\n" +
                                             "    email = ''\n" +
-                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may update every row in the table!"),
+                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may update every row in the table!", null),
                                     new DatasourceStructure.Template("DELETE", "DELETE FROM possessions\n" +
-                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may delete everything in the table!"),
+                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may delete everything in the table!", null),
                             },
                             possessionsTable.getTemplates().toArray()
                     );
@@ -678,9 +682,9 @@ public class MySqlPluginTest {
 
                     assertArrayEquals(
                             new DatasourceStructure.Template[]{
-                                    new DatasourceStructure.Template("SELECT", "SELECT * FROM users LIMIT 10;"),
+                                    new DatasourceStructure.Template("SELECT", "SELECT * FROM users LIMIT 10;", null),
                                     new DatasourceStructure.Template("INSERT", "INSERT INTO users (id, username, password, email, spouse_dob, dob, yob, time1, created_on, updated_on)\n" +
-                                            "  VALUES (1, '', '', '', '2019-07-01', '2019-07-01', '', '', '2019-07-01 10:00:00', '2019-07-01 10:00:00');"),
+                                            "  VALUES (1, '', '', '', '2019-07-01', '2019-07-01', '', '', '2019-07-01 10:00:00', '2019-07-01 10:00:00');", null),
                                     new DatasourceStructure.Template("UPDATE", "UPDATE users SET\n" +
                                             "    id = 1\n" +
                                             "    username = ''\n" +
@@ -692,9 +696,9 @@ public class MySqlPluginTest {
                                             "    time1 = ''\n" +
                                             "    created_on = '2019-07-01 10:00:00'\n" +
                                             "    updated_on = '2019-07-01 10:00:00'\n" +
-                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may update every row in the table!"),
+                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may update every row in the table!", null),
                                     new DatasourceStructure.Template("DELETE", "DELETE FROM users\n" +
-                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may delete everything in the table!"),
+                                            "  WHERE 1 = 0; -- Specify a valid condition here. Removing the condition may delete everything in the table!", null),
                             },
                             usersTable.getTemplates().toArray()
                     );
@@ -764,7 +768,7 @@ public class MySqlPluginTest {
                     assertTrue(result.getIsExecutionSuccess());
                     Object body = result.getBody();
                     assertNotNull(body);
-                    assertEquals("[{\"Variable_name\":\"Ssl_cipher\",\"Value\":\"ECDHE-RSA-AES128-SHA\"}]",
+                    assertEquals("[{\"Variable_name\":\"Ssl_cipher\",\"Value\":\"ECDHE-RSA-AES128-GCM-SHA256\"}]",
                             body.toString());
                 })
                 .verifyComplete();
@@ -788,7 +792,7 @@ public class MySqlPluginTest {
                     assertTrue(result.getIsExecutionSuccess());
                     Object body = result.getBody();
                     assertNotNull(body);
-                    assertEquals("[{\"Variable_name\":\"Ssl_cipher\",\"Value\":\"ECDHE-RSA-AES128-SHA\"}]",
+                    assertEquals("[{\"Variable_name\":\"Ssl_cipher\",\"Value\":\"ECDHE-RSA-AES128-GCM-SHA256\"}]",
                             body.toString());
                 })
                 .verifyComplete();
@@ -812,7 +816,7 @@ public class MySqlPluginTest {
                     assertTrue(result.getIsExecutionSuccess());
                     Object body = result.getBody();
                     assertNotNull(body);
-                    assertEquals("[{\"Variable_name\":\"Ssl_cipher\",\"Value\":\"ECDHE-RSA-AES128-SHA\"}]",
+                    assertEquals("[{\"Variable_name\":\"Ssl_cipher\",\"Value\":\"ECDHE-RSA-AES128-GCM-SHA256\"}]",
                             body.toString());
                 })
                 .verifyComplete();
